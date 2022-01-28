@@ -19,6 +19,14 @@ contract MyEpicGame is ERC721 {
     uint attackDamage;
   }
 
+  struct BigBoss {
+    string name;
+    string imageURI;
+    uint hp;
+    uint maxHp;
+    uint attackDamage;
+  }
+
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
 
@@ -30,14 +38,20 @@ contract MyEpicGame is ERC721 {
 
   // A mapping from an address => the NFTs tokenId. Gives an easy way
   // to store the owner of the NFT and reference it later.
-  mapping(address => uint256[]) public nftHolders;
+  mapping(address => uint256) public nftHolders;
+
+  BigBoss public bigBoss;
 
   // Data passed in to the contract when it's first created initializing the characters.
   constructor(
     string[] memory characterNames,
     string[] memory characterImageURIs,
     uint[] memory characterHp,
-    uint[] memory characterAttackDmg
+    uint[] memory characterAttackDmg,
+    string memory bossName, 
+    string memory bossImageURI,
+    uint bossHp,
+    uint bossAttackDamage
   )
   ERC721("Heroes", "HERO")
   {
@@ -56,6 +70,18 @@ contract MyEpicGame is ERC721 {
       CharacterAttributes memory c = defaultCharacters[i];
       console.log("Done initializing %s w/ HP %s, img %s", c.name, c.hp, c.imageURI);
     }
+
+    // Initialize the boss. Save it to our global "bigBoss" state variable.
+    bigBoss = BigBoss({
+      name: bossName,
+      imageURI: bossImageURI,
+      hp: bossHp,
+      maxHp: bossHp,
+      attackDamage: bossAttackDamage
+    });
+
+    console.log("Done initializing boss %s w/ HP %s, img %s", bigBoss.name, bigBoss.hp, bigBoss.imageURI);
+
     _tokenIds.increment();
   }
 
@@ -81,7 +107,7 @@ contract MyEpicGame is ERC721 {
     console.log("Minted NFT w/ tokenId %s and characterIndex %s", newItemId, _characterIndex);
     
     // Keep an easy way to see who owns what NFT.
-    nftHolders[msg.sender].push(newItemId);
+    nftHolders[msg.sender] = newItemId;
 
     // Increment the tokenId for the next person that uses it.
     _tokenIds.increment();
@@ -113,6 +139,35 @@ contract MyEpicGame is ERC721 {
     
     return output;
   }
+
+  function attackBoss() public {
+    // Get the state of the player's NFT.
+    uint256  nftTokenIdOfPlayer = nftHolders[msg.sender];
+    CharacterAttributes storage player = nftHolderAttributes[nftTokenIdOfPlayer];
+
+    console.log("\nPlayer w/ character %s about to attack. Has %s HP and %s AD", player.name, player.hp, player.attackDamage);
+    console.log("Boss %s has %s HP and %s AD", bigBoss.name, bigBoss.hp, bigBoss.attackDamage);  
+    // Make sure the player has more than 0 HP.
+    require(player.hp > 0, "Error: character must have HP to attack boss.");
+    // Make sure the boss has more than 0 HP.
+    require(bigBoss.hp > 0, "Error: boss must have HP to attack boss.");
+    // Allow player to attack boss.
+    if (bigBoss.hp < player.attackDamage) {
+       bigBoss.hp = 0;
+    } else {
+      bigBoss.hp = bigBoss.hp - player.attackDamage;
+    }
+    // Allow boss to attack player.
+    if (player.hp < bigBoss.attackDamage) {
+      player.hp = 0;
+    } else {
+      player.hp = player.hp - bigBoss.attackDamage;
+    }
+    
+    // Console for ease.
+    console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
+    console.log("Boss attacked player. New player hp: %s\n", player.hp);
+}
 
 
 }
