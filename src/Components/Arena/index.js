@@ -3,13 +3,16 @@ import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, transformCharacterData } from '../../constants';
 import myEpicGame from '../../utils/MyEpicGame.json';
 import './Arena.css';
+import LoadingIndicator from '../LoadingIndicator';
 
 
-const Arena = ({ characterNFT }) => {
+
+const Arena = ({ characterNFT, setCharacterNFT }) => {
   const [gameContract, setGameContract] = useState(null);
   const [boss, setBoss] = useState(null);
 
   const [attackState, setAttackState] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
   const runAttackAction = async () => {
     try {
@@ -20,6 +23,11 @@ const Arena = ({ characterNFT }) => {
         await attackTxn.wait();
         console.log('attackTxn:', attackTxn);
         setAttackState('hit');
+
+        setShowToast(true);
+        setTimeout(() => {
+          setShowToast(false);
+        }, 5000);
       }
 
     } catch (error) {
@@ -56,20 +64,55 @@ const Arena = ({ characterNFT }) => {
       setBoss(transformCharacterData(bossTxn));
     };
 
+    /*
+    * Setup logic when this event is fired off
+    */
+    const onAttackComplete = (newBossHp, newPlayerHp) => {
+        const bossHp = newBossHp.toNumber();
+        const playerHp = newPlayerHp.toNumber();
+
+        console.log(`AttackComplete: Boss Hp: ${bossHp} Player Hp: ${playerHp}`);
+
+        /*
+        * Update both player and boss Hp
+        */
+        setBoss((prevState) => {
+            return { ...prevState, hp: bossHp };
+        });
+
+        setCharacterNFT((prevState) => {
+            return { ...prevState, hp: playerHp };
+        });
+    };
+
     if (gameContract) {
-      /*
-       * gameContract is ready to go! Let's fetch our boss
-       */
-      fetchBoss();
+        fetchBoss();
+        gameContract.on('AttackComplete', onAttackComplete);
     }
+
+    /*
+    * Make sure to clean up this event when this component is removed
+    */
+    return () => {
+        if (gameContract) {
+            gameContract.off('AttackComplete', onAttackComplete);
+        }
+    }
+
   }, [gameContract]); 
 
   return (
     <div className="arena-container">
+      {boss && characterNFT && (
+        <div id="toast" className={showToast ? 'show' : ''}>
+          <div id="desc">{`💥 ${boss.name} was hit for ${characterNFT.attackDamage}!`}</div>
+        </div>
+      )}
+
       {/* Boss */}
       {boss && (
         <div className="boss-container">
-          <div className={`boss-content ${attackState}`}>
+          <div className={`boss-content  ${attackState}`}>
             <h2>🔥 {boss.name} 🔥</h2>
             <div className="image-content">
               <img src={boss.imageURI} alt={`Boss ${boss.name}`} />
@@ -84,6 +127,12 @@ const Arena = ({ characterNFT }) => {
               {`💥 Attack ${boss.name}`}
             </button>
           </div>
+          {attackState === 'attacking' && (
+            <div className="loading-indicator">
+              <LoadingIndicator />
+              <p>Attacking ⚔️</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -109,8 +158,13 @@ const Arena = ({ characterNFT }) => {
               </div>
             </div>
           </div>
+          {/* <div className="active-players">
+            <h2>Active Players</h2>
+            <div className="players-list">{renderActivePlayersList()}</div>
+          </div> */}
         </div>
       )}
+
     </div>
 
   );
