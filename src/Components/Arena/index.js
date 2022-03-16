@@ -13,6 +13,7 @@ const Arena = ({ characterNFT, setCharacterNFT }) => {
 
   const [attackState, setAttackState] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [mpCharacters, setMpCharacters] = useState([]);
 
   const runAttackAction = async () => {
     try {
@@ -36,6 +37,43 @@ const Arena = ({ characterNFT, setCharacterNFT }) => {
     }
   };
 
+  const renderActivePlayersList = async () => {
+    try{
+      if(gameContract){
+        const mpTxn = await gameContract.getAllPlayers();
+        console.log('MultiPlayers:', mpTxn);
+        setMpCharacters(mpTxn.map((activePlayerChar) => transformCharacterData(mpTxn)));
+
+        const activePlayers = mpCharacters.map((player) => {
+          return(
+            <div className="player">
+              <div className="image-content">
+                <h2>{player.name}</h2>
+                <img
+                  src={player.imageURI}
+                  alt={`Character ${player.name}`}
+                />
+                <div className="health-bar">
+                  <progress value={player.hp} max={player.maxHp} />
+                  <p>{`${player.hp} / ${player.maxHp} HP`}</p>
+                </div>
+              </div>
+              <div className="stats">
+                <h4>{`⚔️ Attack Damage: ${player.attackDamage}`}</h4>
+              </div>
+            </div>
+          );
+        });
+
+        return activePlayers;
+      }
+    } catch (error) {
+      console.error('Error attacking boss:', error);
+      setAttackState('');
+    }
+    
+  }
+
   useEffect(() => {
     const { ethereum } = window;
 
@@ -55,9 +93,8 @@ const Arena = ({ characterNFT, setCharacterNFT }) => {
   }, []);
 
   useEffect(() => {
-    /*
-     * Setup async function that will get the boss from our contract and sets in state
-     */
+    
+
     const fetchBoss = async () => {
       const bossTxn = await gameContract.getBigBoss();
       console.log('Boss:', bossTxn);
@@ -99,7 +136,7 @@ const Arena = ({ characterNFT, setCharacterNFT }) => {
         }
     }
 
-  }, [gameContract]); 
+  }, [gameContract, setCharacterNFT]); 
 
   return (
     <div className="arena-container">
@@ -158,12 +195,15 @@ const Arena = ({ characterNFT, setCharacterNFT }) => {
               </div>
             </div>
           </div>
-          {/* <div className="active-players">
+          <div className="active-players">
             <h2>Active Players</h2>
             <div className="players-list">{renderActivePlayersList()}</div>
-          </div> */}
+          </div>
         </div>
       )}
+
+
+      
 
     </div>
 

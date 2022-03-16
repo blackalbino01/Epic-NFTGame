@@ -1,4 +1,5 @@
 const main = async () => {
+  // eslint-disable-next-line no-undef
   const gameContractFactory = await hre.ethers.getContractFactory('MyEpicGame');
   const gameContract = await gameContractFactory.deploy(
     ["Nanaba", "Caven", "Udo"],       // Names
@@ -27,7 +28,9 @@ const main = async () => {
   txn = await gameContract.attackBoss();
   await txn.wait();
 
+  txn = await gameContract.checkIfUserHasNFT();
 
+  console.log(txn);
 };
 
 const runMain = async () => {
